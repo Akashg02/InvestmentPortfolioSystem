@@ -1,0 +1,38 @@
+## .NET
+*.user
+*.suo
+.vs/
+bin/
+obj/
+*.DotSettings.user
+
+## Logs
+logs/
+*.log
+
+## Secrets & Config (never commit)
+appsettings.Production.json
+appsettings.Secrets.json
+**/secrets.json
+
+## Docker
+.docker/
+
+## Certificates
+*.pfx
+*.pem
+
+## Test results
+TestResults/
+coveragereport/
+*.trx
+coverage.cobertura.xml
+
+## OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+## IDE
+.idea/
+*.swp

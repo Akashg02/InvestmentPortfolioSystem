@@ -1,0 +1,197 @@
+@page "/clients"
+@attribute [Authorize]
+@inject IApiService ApiService
+@inject NavigationManager Navigation
+
+<PageTitle>Clients - Investment Portfolio</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Clients</h1>
+    <button class="btn btn-primary" @onclick="() => _showCreateModal = true">+ Add Client</button>
+</div>
+
+<!-- Search -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <input class="form-control" placeholder="Search clients by name or email..."
+               @bind="_searchTerm" @bind:event="oninput" />
+    </div>
+</div>
+
+@if (_isLoading)
+{
+    <div class="d-flex justify-content-center"><div class="spinner-border text-primary"></div></div>
+}
+else
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Risk Profile</th>
+                        <th>Portfolios</th>
+                        <th>Total Value</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var client in FilteredClients)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@client.FullName</td>
+                            <td>@client.Email</td>
+                            <td>@client.Phone</td>
+                            <td>
+                                <span class="badge @GetRiskBadgeClass(client.RiskProfile)">@client.RiskProfile</span>
+                            </td>
+                            <td>@client.PortfolioCount</td>
+                            <td>$@client.TotalPortfolioValue.ToString("N2")</td>
+                            <td>
+                                <span class="badge @(client.IsActive ? "bg-success" : "bg-secondary")">
+                                    @(client.IsActive ? "Active" : "Inactive")
+                                </span>
+                            </td>
+                            <td>
+                                <a href="/clients/@client.Id" class="btn btn-sm btn-outline-primary me-1">View</a>
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteClientAsync(client.Id)">Delete</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<!-- Create Client Modal -->
+@if (_showCreateModal)
+{
+    <div class="modal show d-block" tabindex="-1" style="background:rgba(0,0,0,0.5)">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Client</h5>
+                    <button type="button" class="btn-close" @onclick="() => _showCreateModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="@_newClient" OnValidSubmit="CreateClientAsync">
+                        <DataAnnotationsValidator />
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">First Name</label>
+                                <InputText class="form-control" @bind-Value="_newClient.FirstName" />
+                                <ValidationMessage For="@(() => _newClient.FirstName)" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Last Name</label>
+                                <InputText class="form-control" @bind-Value="_newClient.LastName" />
+                                <ValidationMessage For="@(() => _newClient.LastName)" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email</label>
+                                <InputText type="email" class="form-control" @bind-Value="_newClient.Email" />
+                                <ValidationMessage For="@(() => _newClient.Email)" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Phone</label>
+                                <InputText class="form-control" @bind-Value="_newClient.Phone" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Address</label>
+                                <InputText class="form-control" @bind-Value="_newClient.Address" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Risk Profile</label>
+                                <InputSelect class="form-select" @bind-Value="_newClient.RiskProfile">
+                                    @foreach (var level in Enum.GetValues<RiskLevel>())
+                                    {
+                                        <option value="@level">@level</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Date of Birth</label>
+                                <InputDate class="form-control" @bind-Value="_newClient.DateOfBirth" />
+                                <ValidationMessage For="@(() => _newClient.DateOfBirth)" />
+                            </div>
+                        </div>
+                        @if (!string.IsNullOrEmpty(_formError))
+                        {
+                            <div class="alert alert-danger mt-3">@_formError</div>
+                        }
+                        <div class="d-flex justify-content-end gap-2 mt-4">
+                            <button type="button" class="btn btn-secondary" @onclick="() => _showCreateModal = false">Cancel</button>
+                            <button type="submit" class="btn btn-primary" disabled="@_isSaving">
+                                @if (_isSaving) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                                Create Client
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private IEnumerable<ClientDto> _clients = Enumerable.Empty<ClientDto>();
+    private CreateClientRequest _newClient = new() { DateOfBirth = DateTime.Today.AddYears(-30) };
+    private bool _isLoading = true;
+    private bool _showCreateModal;
+    private bool _isSaving;
+    private string _searchTerm = string.Empty;
+    private string _formError = string.Empty;
+
+    private IEnumerable<ClientDto> FilteredClients => string.IsNullOrWhiteSpace(_searchTerm)
+        ? _clients
+        : _clients.Where(c => c.FullName.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase)
+                            || c.Email.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await ApiService.GetClientsAsync();
+        if (result.Success) _clients = result.Data ?? Enumerable.Empty<ClientDto>();
+        _isLoading = false;
+    }
+
+    private async Task CreateClientAsync()
+    {
+        _isSaving = true;
+        _formError = string.Empty;
+
+        var result = await ApiService.CreateClientAsync(_newClient);
+        if (result.Success)
+        {
+            _showCreateModal = false;
+            _newClient = new() { DateOfBirth = DateTime.Today.AddYears(-30) };
+            var refreshResult = await ApiService.GetClientsAsync();
+            if (refreshResult.Success) _clients = refreshResult.Data ?? _clients;
+        }
+        else
+        {
+            _formError = result.Message;
+        }
+
+        _isSaving = false;
+    }
+
+    private async Task DeleteClientAsync(Guid id)
+    {
+        await ApiService.DeleteClientAsync(id);
+        _clients = _clients.Where(c => c.Id != id);
+    }
+
+    private static string GetRiskBadgeClass(RiskLevel risk) => risk switch
+    {
+        RiskLevel.Conservative => "bg-success",
+        RiskLevel.Moderate => "bg-info",
+        RiskLevel.Aggressive => "bg-warning text-dark",
+        RiskLevel.VeryAggressive => "bg-danger",
+        _ => "bg-secondary"
+    };
+}

@@ -1,0 +1,73 @@
+@page "/login"
+@layout EmptyLayout
+@inject IApiService ApiService
+@inject JwtAuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+
+<div class="login-container">
+    <div class="login-card">
+        <h2 class="text-center mb-4">Investment Portfolio</h2>
+        <h5 class="text-center text-muted mb-4">Sign in to your account</h5>
+
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="alert alert-danger">@_errorMessage</div>
+        }
+
+        <EditForm Model="@_loginModel" OnValidSubmit="HandleLoginAsync">
+            <DataAnnotationsValidator />
+            <div class="mb-3">
+                <label class="form-label">Email</label>
+                <InputText class="form-control" @bind-Value="_loginModel.Email" placeholder="advisor@example.com" />
+                <ValidationMessage For="@(() => _loginModel.Email)" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Password</label>
+                <InputText type="password" class="form-control" @bind-Value="_loginModel.Password" />
+                <ValidationMessage For="@(() => _loginModel.Password)" />
+            </div>
+            <button type="submit" class="btn btn-primary w-100" disabled="@_isLoading">
+                @if (_isLoading)
+                {
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                }
+                Sign In
+            </button>
+        </EditForm>
+        <div class="text-center mt-3">
+            <a href="/register">Don't have an account? Register</a>
+        </div>
+    </div>
+</div>
+
+@code {
+    private readonly LoginRequest _loginModel = new();
+    private string _errorMessage = string.Empty;
+    private bool _isLoading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated == true)
+            Navigation.NavigateTo("/");
+    }
+
+    private async Task HandleLoginAsync()
+    {
+        _isLoading = true;
+        _errorMessage = string.Empty;
+
+        var result = await ApiService.LoginAsync(_loginModel);
+        if (result.Success && result.Data is not null)
+        {
+            await AuthStateProvider.NotifyUserAuthenticated(result.Data.Token);
+            Navigation.NavigateTo("/");
+        }
+        else
+        {
+            _errorMessage = result.Message;
+        }
+
+        _isLoading = false;
+    }
+}

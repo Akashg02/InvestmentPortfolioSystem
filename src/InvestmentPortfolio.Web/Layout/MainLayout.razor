@@ -1,0 +1,74 @@
+@inherits LayoutComponentBase
+@inject NavigationManager Navigation
+@inject IApiService ApiService
+@inject JwtAuthenticationStateProvider AuthStateProvider
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4">
+            <div class="market-ticker">
+                @if (_marketSummary is not null)
+                {
+                    <span class="ticker-item @(_marketSummary.SpxChangePercent >= 0 ? "positive" : "negative")">
+                        S&P 500: @_marketSummary.SpxValue.ToString("N2")
+                        (@(_marketSummary.SpxChangePercent >= 0 ? "+" : "")@_marketSummary.SpxChangePercent.ToString("F2")%)
+                    </span>
+                    <span class="ticker-item @(_marketSummary.NasdaqChangePercent >= 0 ? "positive" : "negative")">
+                        NASDAQ: @_marketSummary.NasdaqValue.ToString("N2")
+                        (@(_marketSummary.NasdaqChangePercent >= 0 ? "+" : "")@_marketSummary.NasdaqChangePercent.ToString("F2")%)
+                    </span>
+                    <span class="ticker-item @(_marketSummary.DowChangePercent >= 0 ? "positive" : "negative")">
+                        DOW: @_marketSummary.DowValue.ToString("N2")
+                        (@(_marketSummary.DowChangePercent >= 0 ? "+" : "")@_marketSummary.DowChangePercent.ToString("F2")%)
+                    </span>
+                    <span class="market-status @(_marketSummary.MarketOpen ? "open" : "closed")">
+                        Market @(_marketSummary.MarketOpen ? "OPEN" : "CLOSED")
+                    </span>
+                }
+            </div>
+            <AuthorizeView>
+                <Authorized>
+                    <button class="btn btn-outline-secondary btn-sm" @onclick="LogoutAsync">Logout</button>
+                </Authorized>
+            </AuthorizeView>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+@code {
+    private MarketSummaryDto? _marketSummary;
+    private System.Timers.Timer? _timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMarketSummaryAsync();
+        _timer = new System.Timers.Timer(60000);
+        _timer.Elapsed += async (_, _) =>
+        {
+            await LoadMarketSummaryAsync();
+            await InvokeAsync(StateHasChanged);
+        };
+        _timer.Start();
+    }
+
+    private async Task LoadMarketSummaryAsync()
+    {
+        _marketSummary = await ApiService.GetMarketSummaryAsync();
+    }
+
+    private async Task LogoutAsync()
+    {
+        await AuthStateProvider.NotifyUserLoggedOut();
+        Navigation.NavigateTo("/login");
+    }
+
+    public void Dispose() => _timer?.Dispose();
+}

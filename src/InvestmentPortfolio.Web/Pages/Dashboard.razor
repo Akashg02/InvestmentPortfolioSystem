@@ -1,0 +1,130 @@
+@page "/"
+@attribute [Authorize]
+@inject IApiService ApiService
+
+<PageTitle>Dashboard - Investment Portfolio</PageTitle>
+
+<h1 class="mb-4">Dashboard</h1>
+
+@if (_isLoading)
+{
+    <div class="d-flex justify-content-center">
+        <div class="spinner-border text-primary" role="status"></div>
+    </div>
+}
+else
+{
+    <!-- Summary Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <p class="text-muted small mb-1">Total Clients</p>
+                    <h3 class="fw-bold">@_clients.Count()</h3>
+                    <span class="text-success small">@_clients.Count(c => c.IsActive) active</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <p class="text-muted small mb-1">Total AUM</p>
+                    <h3 class="fw-bold">$@_totalAum.ToString("N0")</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <p class="text-muted small mb-1">Total Gain/Loss</p>
+                    <h3 class="fw-bold @(_totalGainLoss >= 0 ? "text-success" : "text-danger")">
+                        @(_totalGainLoss >= 0 ? "+" : "")$@_totalGainLoss.ToString("N0")
+                    </h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <p class="text-muted small mb-1">Total Portfolios</p>
+                    <h3 class="fw-bold">@_clients.Sum(c => c.PortfolioCount)</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Clients Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Client Overview</h5>
+            <a href="/clients" class="btn btn-outline-primary btn-sm">View All</a>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Client</th>
+                        <th>Risk Profile</th>
+                        <th>Portfolios</th>
+                        <th>Total Value</th>
+                        <th>Gain/Loss</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var client in _clients.Take(10))
+                    {
+                        <tr>
+                            <td>
+                                <div class="fw-semibold">@client.FullName</div>
+                                <small class="text-muted">@client.Email</small>
+                            </td>
+                            <td>
+                                <span class="badge @GetRiskBadgeClass(client.RiskProfile)">
+                                    @client.RiskProfile
+                                </span>
+                            </td>
+                            <td>@client.PortfolioCount</td>
+                            <td>$@client.TotalPortfolioValue.ToString("N2")</td>
+                            <td class="@(client.TotalGainLoss >= 0 ? "text-success" : "text-danger")">
+                                @(client.TotalGainLoss >= 0 ? "+" : "")$@client.TotalGainLoss.ToString("N2")
+                                (@(client.TotalGainLossPercent >= 0 ? "+" : "")@client.TotalGainLossPercent.ToString("F2")%)
+                            </td>
+                            <td>
+                                <a href="/clients/@client.Id" class="btn btn-outline-secondary btn-sm">View</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@code {
+    private IEnumerable<ClientDto> _clients = Enumerable.Empty<ClientDto>();
+    private bool _isLoading = true;
+    private decimal _totalAum;
+    private decimal _totalGainLoss;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await ApiService.GetClientsAsync();
+        if (result.Success && result.Data is not null)
+        {
+            _clients = result.Data;
+            _totalAum = _clients.Sum(c => c.TotalPortfolioValue);
+            _totalGainLoss = _clients.Sum(c => c.TotalGainLoss);
+        }
+        _isLoading = false;
+    }
+
+    private static string GetRiskBadgeClass(RiskLevel risk) => risk switch
+    {
+        RiskLevel.Conservative => "bg-success",
+        RiskLevel.Moderate => "bg-info",
+        RiskLevel.Aggressive => "bg-warning text-dark",
+        RiskLevel.VeryAggressive => "bg-danger",
+        _ => "bg-secondary"
+    };
+}

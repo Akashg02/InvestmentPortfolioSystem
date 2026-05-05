@@ -1,0 +1,23 @@
+# Build stage
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+COPY ["src/InvestmentPortfolio.Web/InvestmentPortfolio.Web.csproj", "src/InvestmentPortfolio.Web/"]
+COPY ["src/InvestmentPortfolio.Shared/InvestmentPortfolio.Shared.csproj", "src/InvestmentPortfolio.Shared/"]
+RUN dotnet restore "src/InvestmentPortfolio.Web/InvestmentPortfolio.Web.csproj"
+
+COPY . .
+WORKDIR "/src/src/InvestmentPortfolio.Web"
+RUN dotnet build "InvestmentPortfolio.Web.csproj" -c Release -o /app/build
+RUN dotnet publish "InvestmentPortfolio.Web.csproj" -c Release -o /app/publish /p:UseAppHost=false
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
+WORKDIR /app
+EXPOSE 80
+EXPOSE 443
+
+RUN adduser --disabled-password --gecos '' appuser && chown -R appuser /app
+USER appuser
+
+COPY --from=build /app/publish .
+ENTRYPOINT ["dotnet", "InvestmentPortfolio.Web.dll"]

@@ -1,0 +1,57 @@
+version: '3.9'
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: investment_sqlserver
+    environment:
+      SA_PASSWORD: "InvestPortfolio@2024!"
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Developer"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    healthcheck:
+      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "InvestPortfolio@2024!" -Q "SELECT 1" -b
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: investment_api
+    ports:
+      - "5001:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=InvestmentPortfolioDB;User Id=sa;Password=InvestPortfolio@2024!;TrustServerCertificate=True;
+      - JwtSettings__SecretKey=ProductionSecretKeyThatIsAtLeast32Characters!
+      - JwtSettings__Issuer=InvestmentPortfolio.API
+      - JwtSettings__Audience=InvestmentPortfolio.Web
+      - JwtSettings__ExpirationMinutes=60
+      - MarketData__AlphaVantageApiKey=${ALPHA_VANTAGE_API_KEY:-demo}
+      - AllowedOrigins__BlazorApp=http://localhost:5002
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    restart: on-failure
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: investment_web
+    ports:
+      - "5002:80"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ApiSettings__BaseUrl=http://api
+    depends_on:
+      - api
+    restart: on-failure
+
+volumes:
+  sqlserver_data:

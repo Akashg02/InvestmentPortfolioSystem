@@ -1,0 +1,220 @@
+@page "/portfolios/{PortfolioId:guid}"
+@attribute [Authorize]
+@inject IApiService ApiService
+
+<PageTitle>@(_portfolio?.Name ?? "Portfolio") - Investment Portfolio</PageTitle>
+
+@if (_isLoading)
+{
+    <div class="d-flex justify-content-center mt-5"><div class="spinner-border text-primary"></div></div>
+}
+else if (_portfolio is null)
+{
+    <div class="alert alert-danger">Portfolio not found.</div>
+}
+else
+{
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="/clients">Clients</a></li>
+                    <li class="breadcrumb-item"><a href="/clients/@_portfolio.ClientId">@_portfolio.ClientName</a></li>
+                    <li class="breadcrumb-item active">@_portfolio.Name</li>
+                </ol>
+            </nav>
+            <h1>@_portfolio.Name</h1>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary" @onclick="RefreshPricesAsync" disabled="@_isRefreshing">
+                @if (_isRefreshing) { <span class="spinner-border spinner-border-sm me-1"></span> }
+                Refresh Prices
+            </button>
+            <button class="btn btn-primary" @onclick="() => _showAddInvestment = true">+ Buy Investment</button>
+        </div>
+    </div>
+
+    <!-- Portfolio Summary -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body">
+                    <p class="text-muted small mb-1">Total Value</p>
+                    <h4>$@_portfolio.TotalValue.ToString("N2")</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body">
+                    <p class="text-muted small mb-1">Total Cost</p>
+                    <h4>$@_portfolio.TotalCost.ToString("N2")</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body">
+                    <p class="text-muted small mb-1">Total Gain/Loss</p>
+                    <h4 class="@(_portfolio.TotalGainLoss >= 0 ? "text-success" : "text-danger")">
+                        @(_portfolio.TotalGainLoss >= 0 ? "+" : "")$@_portfolio.TotalGainLoss.ToString("N2")
+                    </h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body">
+                    <p class="text-muted small mb-1">Return</p>
+                    <h4 class="@(_portfolio.TotalGainLossPercent >= 0 ? "text-success" : "text-danger")">
+                        @(_portfolio.TotalGainLossPercent >= 0 ? "+" : "")@_portfolio.TotalGainLossPercent.ToString("F2")%
+                    </h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Holdings Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">Holdings (@_portfolio.Investments.Count)</h5>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Symbol</th>
+                        <th>Type</th>
+                        <th>Quantity</th>
+                        <th>Avg Cost</th>
+                        <th>Current Price</th>
+                        <th>Day Change</th>
+                        <th>Market Value</th>
+                        <th>Gain/Loss</th>
+                        <th>Weight</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var inv in _portfolio.Investments.OrderByDescending(i => i.CurrentValue))
+                    {
+                        var weight = _portfolio.TotalValue > 0 ? (inv.CurrentValue / _portfolio.TotalValue) * 100 : 0;
+                        <tr>
+                            <td class="fw-bold">@inv.Symbol</td>
+                            <td><span class="badge bg-secondary">@inv.AssetType</span></td>
+                            <td>@inv.Quantity.ToString("N4")</td>
+                            <td>$@inv.AverageCostBasis.ToString("N2")</td>
+                            <td>$@inv.CurrentPrice.ToString("N2")</td>
+                            <td class="@(inv.DayChange >= 0 ? "text-success" : "text-danger")">
+                                @(inv.DayChange >= 0 ? "+" : "")$@inv.DayChange.ToString("N2")
+                                (@(inv.DayChangePercent >= 0 ? "+" : "")@inv.DayChangePercent.ToString("F2")%)
+                            </td>
+                            <td>$@inv.CurrentValue.ToString("N2")</td>
+                            <td class="@(inv.GainLoss >= 0 ? "text-success" : "text-danger")">
+                                @(inv.GainLoss >= 0 ? "+" : "")$@inv.GainLoss.ToString("N2")
+                                <br />
+                                <small>(@(inv.GainLossPercent >= 0 ? "+" : "")@inv.GainLossPercent.ToString("F2")%)</small>
+                            </td>
+                            <td>@weight.ToString("F1")%</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+<!-- Add Investment Modal -->
+@if (_showAddInvestment)
+{
+    <div class="modal show d-block" tabindex="-1" style="background:rgba(0,0,0,0.5)">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Buy Investment</h5>
+                    <button class="btn-close" @onclick="() => _showAddInvestment = false"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="@_newInvestment" OnValidSubmit="AddInvestmentAsync">
+                        <DataAnnotationsValidator />
+                        <div class="mb-3">
+                            <label class="form-label">Symbol</label>
+                            <InputText class="form-control text-uppercase" @bind-Value="_newInvestment.Symbol" placeholder="e.g. AAPL" />
+                            <ValidationMessage For="@(() => _newInvestment.Symbol)" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Asset Type</label>
+                            <InputSelect class="form-select" @bind-Value="_newInvestment.AssetType">
+                                @foreach (var type in Enum.GetValues<AssetType>())
+                                {
+                                    <option value="@type">@type</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <label class="form-label">Quantity</label>
+                                <InputNumber class="form-control" @bind-Value="_newInvestment.Quantity" />
+                                <ValidationMessage For="@(() => _newInvestment.Quantity)" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">Purchase Price</label>
+                                <InputNumber class="form-control" @bind-Value="_newInvestment.PurchasePrice" />
+                                <ValidationMessage For="@(() => _newInvestment.PurchasePrice)" />
+                            </div>
+                        </div>
+                        <div class="mb-3 mt-3">
+                            <label class="form-label">Purchase Date</label>
+                            <InputDate class="form-control" @bind-Value="_newInvestment.PurchaseDate" />
+                        </div>
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-secondary" @onclick="() => _showAddInvestment = false">Cancel</button>
+                            <button type="submit" class="btn btn-success">Buy</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid PortfolioId { get; set; }
+
+    private PortfolioDto? _portfolio;
+    private CreateInvestmentRequest _newInvestment = new() { PurchaseDate = DateTime.Today };
+    private bool _isLoading = true;
+    private bool _showAddInvestment;
+    private bool _isRefreshing;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPortfolioAsync();
+        _isLoading = false;
+    }
+
+    private async Task LoadPortfolioAsync()
+    {
+        var result = await ApiService.GetPortfolioAsync(PortfolioId);
+        if (result.Success) _portfolio = result.Data;
+        if (_portfolio is not null) _newInvestment.PortfolioId = _portfolio.Id;
+    }
+
+    private async Task AddInvestmentAsync()
+    {
+        var result = await ApiService.AddInvestmentAsync(_newInvestment);
+        if (result.Success)
+        {
+            _showAddInvestment = false;
+            _newInvestment = new() { PortfolioId = PortfolioId, PurchaseDate = DateTime.Today };
+            await LoadPortfolioAsync();
+        }
+    }
+
+    private async Task RefreshPricesAsync()
+    {
+        _isRefreshing = true;
+        await ApiService.RefreshPortfolioPricesAsync(PortfolioId);
+        await LoadPortfolioAsync();
+        _isRefreshing = false;
+    }
+}
