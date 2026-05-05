@@ -1,0 +1,131 @@
+html, body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f0f2f5;
+}
+
+.page {
+    display: flex;
+    min-height: 100vh;
+}
+
+.sidebar {
+    width: 240px;
+    min-height: 100vh;
+    flex-shrink: 0;
+}
+
+main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+}
+
+.top-row {
+    background: #fff;
+    border-bottom: 1px solid #dee2e6;
+    padding: 0.75rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.content {
+    padding: 1.5rem;
+    flex: 1;
+}
+
+/* Login page */
+.empty-layout {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.login-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.login-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 2.5rem;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+/* Market ticker */
+.market-ticker {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    font-size: 0.85rem;
+}
+
+.ticker-item {
+    font-weight: 600;
+}
+
+.ticker-item.positive { color: #198754; }
+.ticker-item.negative { color: #dc3545; }
+
+.market-status {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.market-status.open  { background: #d1e7dd; color: #0f5132; }
+.market-status.closed { background: #f8d7da; color: #842029; }
+
+/* Nav */
+.navbar .nav-link {
+    color: rgba(255,255,255,0.75) !important;
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    transition: background 0.2s, color 0.2s;
+}
+
+.navbar .nav-link:hover,
+.navbar .nav-link.active {
+    background: rgba(255,255,255,0.15);
+    color: #fff !important;
+}
+
+/* Cards */
+.card { border-radius: 10px; }
+
+/* Blazor error UI */
+#blazor-error-ui {
+    background: #ffcc00;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0,0,0,.2);
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .sidebar { display: none; }
+    .market-ticker { font-size: 0.75rem; gap: 0.75rem; }
+}

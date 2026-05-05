@@ -1,5 +1,4 @@
 using InvestmentPortfolio.Core.Entities;
-using InvestmentPortfolio.Shared.Enums;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -27,7 +26,10 @@ public class DbInitializer
 
     public async Task InitializeAsync()
     {
-        await _context.Database.MigrateAsync();
+        // EnsureCreated creates all tables (including Identity) without needing migration files.
+        // Works out of the box on first clone — no "dotnet ef migrations" step required.
+        await _context.Database.EnsureCreatedAsync();
+
         await SeedRolesAsync();
         await SeedAdminUserAsync();
     }
@@ -64,6 +66,11 @@ public class DbInitializer
         {
             await _userManager.AddToRoleAsync(admin, "Admin");
             _logger.LogInformation("Seeded admin user: {Email}", adminEmail);
+        }
+        else
+        {
+            _logger.LogError("Failed to seed admin: {Errors}",
+                string.Join(", ", result.Errors.Select(e => e.Description)));
         }
     }
 }
