@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Investment Portfolio Management System — Preview</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/open-iconic/1.1.1/font/css/open-iconic-bootstrap.min.css"/>
+<style>
+  body { background:#f0f2f5; font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; }
+  .page { display:flex; min-height:100vh; }
+  .sidebar { width:230px; min-height:100vh; background:#1a237e; flex-shrink:0; position:fixed; top:0; left:0; bottom:0; z-index:100; }
+  .sidebar-brand { color:#fff; font-size:1.2rem; font-weight:700; padding:1.5rem 1rem 1rem; display:block; text-decoration:none; border-bottom:1px solid rgba(255,255,255,.15); margin-bottom:.5rem; }
+  .sidebar .nav-link { color:rgba(255,255,255,.72); border-radius:6px; margin:.15rem .5rem; padding:.55rem .85rem; transition:all .2s; font-size:.93rem; }
+  .sidebar .nav-link:hover, .sidebar .nav-link.active { background:rgba(255,255,255,.15); color:#fff; }
+  .sidebar .nav-link .oi { margin-right:.5rem; font-size:.85rem; }
+  main { margin-left:230px; flex:1; display:flex; flex-direction:column; }
+  .top-row { background:#fff; border-bottom:1px solid #dee2e6; padding:.7rem 1.5rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.5rem; position:sticky; top:0; z-index:99; }
+  .ticker-item { font-size:.83rem; font-weight:600; }
+  .ticker-item.up { color:#198754; }
+  .ticker-item.down { color:#dc3545; }
+  .market-badge { font-size:.72rem; font-weight:700; padding:2px 8px; border-radius:4px; background:#d1e7dd; color:#0f5132; }
+  .content { padding:1.75rem; }
+  .card { border-radius:10px; }
+  .page-section { display:none; }
+  .page-section.active { display:block; }
+  .badge-conservative { background:#198754 !important; }
+  .badge-moderate { background:#0dcaf0 !important; color:#000 !important; }
+  .badge-aggressive { background:#ffc107 !important; color:#000 !important; }
+  .badge-veryaggressive { background:#dc3545 !important; }
+  .stat-card { transition:transform .15s; }
+  .stat-card:hover { transform:translateY(-2px); }
+  .holdings-bar { height:6px; border-radius:3px; }
+  .sparkline { font-size:1.5rem; }
+  .login-wrap { background:linear-gradient(135deg,#1a237e 0%,#283593 100%); min-height:100vh; display:flex; align-items:center; justify-content:center; }
+  .login-card { background:#fff; border-radius:14px; padding:2.5rem; width:100%; max-width:420px; box-shadow:0 20px 60px rgba(0,0,0,.35); }
+  .progress { border-radius:8px; }
+  .table > :not(caption) > * > * { padding:.65rem .85rem; }
+  .nav-tab-btn { cursor:pointer; }
+  .tag { display:inline-block; font-size:.75rem; padding:2px 8px; border-radius:20px; font-weight:600; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════ LOGIN PAGE ═══════════════════════ -->
+<div id="loginPage">
+  <div class="login-wrap">
+    <div class="login-card">
+      <h2 class="text-center fw-bold mb-1">InvestPortfolio</h2>
+      <p class="text-center text-muted mb-4">Sign in to your advisor account</p>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Email</label>
+        <input class="form-control" value="admin@investmentportfolio.com" readonly/>
+      </div>
+      <div class="mb-4">
+        <label class="form-label fw-semibold">Password</label>
+        <input class="form-control" type="password" value="Admin@123456!" readonly/>
+      </div>
+      <button class="btn btn-primary w-100 py-2 fw-semibold" onclick="showApp()">Sign In</button>
+      <p class="text-center text-muted small mt-3">Don't have an account? <a href="#">Register</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ MAIN APP ═══════════════════════ -->
+<div id="appShell" style="display:none;">
+<div class="page">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <a class="sidebar-brand" href="#">💼 InvestPortfolio</a>
+    <nav class="nav flex-column">
+      <a class="nav-link nav-tab-btn active" id="nav-dashboard" onclick="showPage('dashboard')">
+        <span class="oi oi-home"></span> Dashboard
+      </a>
+      <a class="nav-link nav-tab-btn" id="nav-clients" onclick="showPage('clients')">
+        <span class="oi oi-people"></span> Clients
+      </a>
+      <a class="nav-link nav-tab-btn" id="nav-portfolios" onclick="showPage('portfolios')">
+        <span class="oi oi-bar-chart"></span> Portfolios
+      </a>
+      <a class="nav-link nav-tab-btn" id="nav-portfolio-detail" onclick="showPage('portfolio-detail')" style="padding-left:2.2rem;font-size:.85rem;">
+        <span class="oi oi-list"></span> Holdings Detail
+      </a>
+      <a class="nav-link nav-tab-btn" id="nav-analytics" onclick="showPage('analytics')">
+        <span class="oi oi-graph"></span> Analytics
+      </a>
+      <a class="nav-link nav-tab-btn" id="nav-swagger" onclick="showPage('swagger')">
+        <span class="oi oi-code"></span> Swagger / API
+      </a>
+    </nav>
+    <div style="position:absolute;bottom:1rem;left:0;right:0;padding:.5rem 1rem;">
+      <div class="text-white-50 small px-2">Logged in as</div>
+      <div class="text-white small px-2 fw-semibold">System Admin</div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <main>
+    <!-- Top row ticker -->
+    <div class="top-row">
+      <div class="d-flex gap-3 flex-wrap align-items-center">
+        <span class="ticker-item up">S&amp;P 500: 5,342.18 <span class="text-success">▲ +0.74%</span></span>
+        <span class="ticker-item up">NASDAQ: 16,820.45 <span class="text-success">▲ +1.12%</span></span>
+        <span class="ticker-item down">DOW: 39,118.86 <span class="text-danger">▼ −0.18%</span></span>
+        <span class="market-badge">Market OPEN</span>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <span class="text-muted small">System Admin</span>
+        <button class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('appShell').style.display='none';document.getElementById('loginPage').style.display='block';">Logout</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ══════ DASHBOARD ══════ -->
+      <div id="page-dashboard" class="page-section active">
+        <h2 class="fw-bold mb-4">Dashboard</h2>
+        <div class="row g-3 mb-4">
+          <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm stat-card">
+              <div class="card-body">
+                <p class="text-muted small mb-1">Total Clients</p>
+                <h3 class="fw-bold mb-0">8</h3>
+                <span class="text-success small">8 active</span>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm stat-card">
+              <div class="card-body">
+                <p class="text-muted small mb-1">Total AUM</p>
+                <h3 class="fw-bold mb-0">$4,218,340</h3>
+                <span class="text-success small">↑ $38,200 today</span>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm stat-card">
+              <div class="card-body">
+                <p class="text-muted small mb-1">Total Gain / Loss</p>
+                <h3 class="fw-bold text-success mb-0">+$612,480</h3>
+                <span class="text-success small">+17.0% overall return</span>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm stat-card">
+              <div class="card-body">
+                <p class="text-muted small mb-1">Total Portfolios</p>
+                <h3 class="fw-bold mb-0">14</h3>
+                <span class="text-muted small">across all clients</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+            <h5 class="mb-0 fw-semibold">Client Overview</h5>
+            <a class="btn btn-outline-primary btn-sm nav-tab-btn" onclick="showPage('clients')">View All</a>
+          </div>
+          <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+              <thead class="table-light">
+                <tr><th>Client</th><th>Risk Profile</th><th>Portfolios</th><th>Total Value</th><th>Gain / Loss</th><th></th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><div class="fw-semibold">James Harrison</div><small class="text-muted">james.harrison@email.com</small></td>
+                  <td><span class="badge badge-aggressive">Aggressive</span></td>
+                  <td>3</td><td>$842,150</td>
+                  <td class="text-success">+$124,300 (+17.3%)</td>
+                  <td><button class="btn btn-outline-secondary btn-sm nav-tab-btn" onclick="showPage('clients')">View</button></td>
+                </tr>
+                <tr>
+                  <td><div class="fw-semibold">Sophia Chen</div><small class="text-muted">sophia.chen@email.com</small></td>
+                  <td><span class="badge badge-moderate">Moderate</span></td>
+                  <td>2</td><td>$614,800</td>
+                  <td class="text-success">+$89,200 (+17.0%)</td>
+                  <td><button class="btn btn-outline-secondary btn-sm nav-tab-btn" onclick="showPage('clients')">View</button></td>
+                </tr>
+                <tr>
+                  <td><div class="fw-semibold">Robert Williams</div><small class="text-muted">robert.w@email.com</small></td>
+                  <td><span class="badge badge-conservative">Conservative</span></td>
+                  <td>1</td><td>$398,400</td>
+                  <td class="text-success">+$28,400 (+7.7%)</td>
+                  <td><button class="btn btn-outline-secondary btn-sm nav-tab-btn" onclick="showPage('clients')">View</button></td>
+                </tr>
+                <tr>
+                  <td><div class="fw-semibold">Priya Patel</div><small class="text-muted">priya.patel@email.com</small></td>
+                  <td><span class="badge badge-veryaggressive">Very Aggressive</span></td>
+                  <td>2</td><td>$721,060</td>
+                  <td class="text-success">+$198,060 (+37.9%)</td>
+                  <td><button class="btn btn-outline-secondary btn-sm nav-tab-btn" onclick="showPage('clients')">View</button></td>
+                </tr>
+                <tr>
+                  <td><div class="fw-semibold">Michael Torres</div><small class="text-muted">m.torres@email.com</small></td>
+                  <td><span class="badge badge-moderate">Moderate</span></td>
+                  <td>2</td><td>$512,930</td>
+                  <td class="text-danger">−$14,070 (−2.7%)</td>
+                  <td><button class="btn btn-outline-secondary btn-sm nav-tab-btn" onclick="showPage('clients')">View</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════ CLIENTS ══════ -->
+      <div id="page-clients" class="page-section">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h2 class="fw-bold mb-0">Clients</h2>
+          <button class="btn btn-primary">+ Add Client</button>
+        </div>
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-body py-2">
+            <input class="form-control" placeholder="Search clients by name or email..." value=""/>
+          </div>
+        </div>
+        <div class="card border-0 shadow-sm">
+          <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+              <thead class="table-light">
+                <tr><th>Name</th><th>Email</th><th>Phone</th><th>Risk Profile</th><th>Portfolios</th><th>Total Value</th><th>Status</th><th>Actions</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="fw-semibold">James Harrison</td><td>james.harrison@email.com</td><td>+1 555-0182</td>
+                  <td><span class="badge badge-aggressive">Aggressive</span></td>
+                  <td>3</td><td>$842,150</td><td><span class="badge bg-success">Active</span></td>
+                  <td><button class="btn btn-sm btn-outline-primary me-1 nav-tab-btn" onclick="showPage('portfolio-detail')">View</button><button class="btn btn-sm btn-outline-danger">Delete</button></td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold">Sophia Chen</td><td>sophia.chen@email.com</td><td>+1 555-0247</td>
+                  <td><span class="badge badge-moderate">Moderate</span></td>
+                  <td>2</td><td>$614,800</td><td><span class="badge bg-success">Active</span></td>
+                  <td><button class="btn btn-sm btn-outline-primary me-1 nav-tab-btn" onclick="showPage('portfolio-detail')">View</button><button class="btn btn-sm btn-outline-danger">Delete</button></td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold">Robert Williams</td><td>robert.w@email.com</td><td>+1 555-0311</td>
+                  <td><span class="badge badge-conservative">Conservative</span></td>
+                  <td>1</td><td>$398,400</td><td><span class="badge bg-success">Active</span></td>
+                  <td><button class="btn btn-sm btn-outline-primary me-1 nav-tab-btn" onclick="showPage('portfolio-detail')">View</button><button class="btn btn-sm btn-outline-danger">Delete</button></td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold">Priya Patel</td><td>priya.patel@email.com</td><td>+1 555-0458</td>
+                  <td><span class="badge badge-veryaggressive">Very Aggressive</span></td>
+                  <td>2</td><td>$721,060</td><td><span class="badge bg-success">Active</span></td>
+                  <td><button class="btn btn-sm btn-outline-primary me-1 nav-tab-btn" onclick="showPage('portfolio-detail')">View</button><button class="btn btn-sm btn-outline-danger">Delete</button></td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold">Michael Torres</td><td>m.torres@email.com</td><td>+1 555-0519</td>
+                  <td><span class="badge badge-moderate">Moderate</span></td>
+                  <td>2</td><td>$512,930</td><td><span class="badge bg-success">Active</span></td>
+                  <td><button class="btn btn-sm btn-outline-primary me-1 nav-tab-btn" onclick="showPage('portfolio-detail')">View</button><button class="btn btn-sm btn-outline-danger">Delete</button></td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold">Elena Russo</td><td>elena.russo@email.com</td><td>+1 555-0674</td>
+                  <td><span class="badge badge-conservative">Conservative</span></td>
+                  <td>2</td><td>$329,000</td><td><span class="badge bg-success">Active</span></td>
+                  <td><button class="btn btn-sm btn-outline-primary me-1 nav-tab-btn" onclick="showPage('portfolio-detail')">View</button><button class="btn btn-sm btn-outline-danger">Delete</button></td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold">David Kim</td><td>david.kim@email.com</td><td>+1 555-0788</td>
+                  <td><span class="badge badge-aggressive">Aggressive</span></td>
+                  <td>1</td><td>$558,000</td><td><span class="badge bg-success">Active</span></td>
+                  <td><button class="btn btn-sm btn-outline-primary me-1 nav-tab-btn" onclick="showPage('portfolio-detail')">View</button><button class="btn btn-sm btn-outline-danger">Delete</button></td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold">Amara Osei</td><td>amara.osei@email.com</td><td>+1 555-0893</td>
+                  <td><span class="badge badge-moderate">Moderate</span></td>
+                  <td>1</td><td>$242,000</td><td><span class="badge bg-secondary">Inactive</span></td>
+                  <td><button class="btn btn-sm btn-outline-primary me-1 nav-tab-btn" onclick="showPage('portfolio-detail')">View</button><button class="btn btn-sm btn-outline-danger">Delete</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════ PORTFOLIOS ══════ -->
+      <div id="page-portfolios" class="page-section">
+        <h2 class="fw-bold mb-4">All Portfolios</h2>
+        <div class="row g-4">
+          <div class="col-md-6 col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+              <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <span class="fw-bold">Tech Growth Fund</span><span class="badge bg-success">Active</span>
+              </div>
+              <div class="card-body">
+                <p class="text-muted small mb-3"><a href="#">James Harrison</a></p>
+                <div class="row text-center g-2">
+                  <div class="col-6"><p class="text-muted small mb-0">Market Value</p><strong>$412,800</strong></div>
+                  <div class="col-6"><p class="text-muted small mb-0">Gain / Loss</p><strong class="text-success">+$72,800</strong></div>
+                  <div class="col-6"><p class="text-muted small mb-0">Return</p><strong class="text-success">+21.4%</strong></div>
+                  <div class="col-6"><p class="text-muted small mb-0">Holdings</p><strong>7</strong></div>
+                </div>
+              </div>
+              <div class="card-footer bg-white">
+                <button class="btn btn-outline-primary btn-sm w-100 nav-tab-btn" onclick="showPage('portfolio-detail')">View Holdings</button>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6 col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+              <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <span class="fw-bold">Balanced Income</span><span class="badge bg-success">Active</span>
+              </div>
+              <div class="card-body">
+                <p class="text-muted small mb-3"><a href="#">Sophia Chen</a></p>
+                <div class="row text-center g-2">
+                  <div class="col-6"><p class="text-muted small mb-0">Market Value</p><strong>$318,400</strong></div>
+                  <div class="col-6"><p class="text-muted small mb-0">Gain / Loss</p><strong class="text-success">+$44,400</strong></div>
+                  <div class="col-6"><p class="text-muted small mb-0">Return</p><strong class="text-success">+16.2%</strong></div>
+                  <div class="col-6"><p class="text-muted small mb-0">Holdings</p><strong>9</strong></div>
+                </div>
+              </div>
+              <div class="card-footer bg-white">
+                <button class="btn btn-outline-primary btn-sm w-100 nav-tab-btn" onclick="showPage('portfolio-detail')">View Holdings</button>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6 col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+              <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <span class="fw-bold">Crypto &amp; Growth</span><span class="badge bg-success">Active</span>
+              </div>
+              <div class="card-body">
+                <p class="text-muted small mb-3"><a href="#">Priya Patel</a></p>
+                <div class="row text-center g-2">
+                  <div class="col-6"><p class="text-muted small mb-0">Market Value</p><strong>$421,060</strong></div>
+                  <div class="col-6"><p class="text-muted small mb-0">Gain / Loss</p><strong class="text-success">+$121,060</strong></div>
+                  <div class="col-6"><p class="text-muted small mb-0">Return</p><strong class="text-success">+40.4%</strong></div>
+                  <div class="col-6"><p class="text-muted small mb-0">Holdings</p><strong>5</strong></div>
+                </div>
+              </div>
+              <div class="card-footer bg-white">
+                <button class="btn btn-outline-primary btn-sm w-100 nav-tab-btn" onclick="showPage('portfolio-detail')">View Holdings</button>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6 col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+              <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <span class="fw-bold">Conservative Bonds</span><span class="badge bg-success">Active</span>
+              </div>
+              <div class="card-body">
+                <p class="text-muted small mb-3"><a href="#">Robert Williams</a></p>
+                <div class="row text-center g-2">
+                  <div class="col-6"><p class="text-muted small mb-0">Market Value</p><strong>$398,400</strong></div>
+                  <div class="col-6"><p class="text-muted small mb-0">Gain / Loss</p><strong class="text-success">+$28,400</strong></div>
+                  <div class="col-6"><p class="text-muted small mb-0">Return</p><strong class="text-success">+7.7%</strong></div>
+                  <div class="col-6"><p class="text-muted small mb-0">Holdings</p><strong>6</strong></div>
+                </div>
+              </div>
+              <div class="card-footer bg-white">
+                <button class="btn btn-outline-primary btn-sm w-100 nav-tab-btn" onclick="showPage('portfolio-detail')">View Holdings</button>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6 col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+              <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <span class="fw-bold">Diversified Core</span><span class="badge bg-success">Active</span>
+              </div>
+              <div class="card-body">
+                <p class="text-muted small mb-3"><a href="#">Michael Torres</a></p>
+                <div class="row text-center g-2">
+                  <div class="col-6"><p class="text-muted small mb-0">Market Value</p><strong>$298,930</strong></div>
+                  <div class="col-6"><p class="text-muted small mb-0">Gain / Loss</p><strong class="text-danger">−$8,070</strong></div>
+                  <div class="col-6"><p class="text-muted small mb-0">Return</p><strong class="text-danger">−2.6%</strong></div>
+                  <div class="col-6"><p class="text-muted small mb-0">Holdings</p><strong>8</strong></div>
+                </div>
+              </div>
+              <div class="card-footer bg-white">
+                <button class="btn btn-outline-primary btn-sm w-100 nav-tab-btn" onclick="showPage('portfolio-detail')">View Holdings</button>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6 col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+              <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <span class="fw-bold">ETF Ladder</span><span class="badge bg-secondary">Inactive</span>
+              </div>
+              <div class="card-body">
+                <p class="text-muted small mb-3"><a href="#">Amara Osei</a></p>
+                <div class="row text-center g-2">
+                  <div class="col-6"><p class="text-muted small mb-0">Market Value</p><strong>$242,000</strong></div>
+                  <div class="col-6"><p class="text-muted small mb-0">Gain / Loss</p><strong class="text-success">+$18,000</strong></div>
+                  <div class="col-6"><p class="text-muted small mb-0">Return</p><strong class="text-success">+8.0%</strong></div>
+                  <div class="col-6"><p class="text-muted small mb-0">Holdings</p><strong>4</strong></div>
+                </div>
+              </div>
+              <div class="card-footer bg-white">
+                <button class="btn btn-outline-primary btn-sm w-100 nav-tab-btn" onclick="showPage('portfolio-detail')">View Holdings</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════ PORTFOLIO DETAIL / HOLDINGS ══════ -->
+      <div id="page-portfolio-detail" class="page-section">
+        <nav aria-label="breadcrumb" class="mb-1">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a class="nav-tab-btn" onclick="showPage('clients')" href="#">Clients</a></li>
+            <li class="breadcrumb-item"><a href="#">James Harrison</a></li>
+            <li class="breadcrumb-item active">Tech Growth Fund</li>
+          </ol>
+        </nav>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h2 class="fw-bold mb-0">Tech Growth Fund</h2>
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm">↻ Refresh Prices</button>
+            <button class="btn btn-success btn-sm">+ Buy Investment</button>
+          </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+          <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+              <div class="card-body py-3">
+                <p class="text-muted small mb-1">Total Value</p>
+                <h4 class="fw-bold mb-0">$412,800</h4>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+              <div class="card-body py-3">
+                <p class="text-muted small mb-1">Total Cost</p>
+                <h4 class="fw-bold mb-0">$340,000</h4>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+              <div class="card-body py-3">
+                <p class="text-muted small mb-1">Total Gain / Loss</p>
+                <h4 class="fw-bold text-success mb-0">+$72,800</h4>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+              <div class="card-body py-3">
+                <p class="text-muted small mb-1">Return</p>
+                <h4 class="fw-bold text-success mb-0">+21.4%</h4>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white py-3">
+            <h5 class="mb-0 fw-semibold">Holdings (7)</h5>
+          </div>
+          <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Symbol</th><th>Type</th><th>Quantity</th><th>Avg Cost</th>
+                  <th>Current Price</th><th>Day Change</th><th>Market Value</th>
+                  <th>Gain / Loss</th><th>Weight</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="fw-bold">AAPL</td><td><span class="badge bg-secondary">Stock</span></td>
+                  <td>150.0000</td><td>$148.20</td><td>$189.30</td>
+                  <td class="text-success">+$1.42 (+0.76%)</td><td>$28,395</td>
+                  <td class="text-success">+$6,165 <br/><small>(+27.7%)</small></td><td>6.9%</td>
+                </tr>
+                <tr>
+                  <td class="fw-bold">NVDA</td><td><span class="badge bg-secondary">Stock</span></td>
+                  <td>60.0000</td><td>$620.00</td><td>$875.40</td>
+                  <td class="text-success">+$18.60 (+2.17%)</td><td>$52,524</td>
+                  <td class="text-success">+$15,324 <br/><small>(+41.2%)</small></td><td>12.7%</td>
+                </tr>
+                <tr>
+                  <td class="fw-bold">MSFT</td><td><span class="badge bg-secondary">Stock</span></td>
+                  <td>100.0000</td><td>$320.00</td><td>$415.80</td>
+                  <td class="text-success">+$3.20 (+0.78%)</td><td>$41,580</td>
+                  <td class="text-success">+$9,580 <br/><small>(+29.9%)</small></td><td>10.1%</td>
+                </tr>
+                <tr>
+                  <td class="fw-bold">QQQ</td><td><span class="badge bg-secondary">ETF</span></td>
+                  <td>200.0000</td><td>$380.00</td><td>$441.60</td>
+                  <td class="text-success">+$5.80 (+1.33%)</td><td>$88,320</td>
+                  <td class="text-success">+$12,320 <br/><small>(+16.2%)</small></td><td>21.4%</td>
+                </tr>
+                <tr>
+                  <td class="fw-bold">AMZN</td><td><span class="badge bg-secondary">Stock</span></td>
+                  <td>80.0000</td><td>$165.00</td><td>$182.40</td>
+                  <td class="text-danger">−$0.90 (−0.49%)</td><td>$14,592</td>
+                  <td class="text-success">+$1,392 <br/><small>(+10.5%)</small></td><td>3.5%</td>
+                </tr>
+                <tr>
+                  <td class="fw-bold">GOOGL</td><td><span class="badge bg-secondary">Stock</span></td>
+                  <td>120.0000</td><td>$140.00</td><td>$175.20</td>
+                  <td class="text-success">+$2.10 (+1.21%)</td><td>$21,024</td>
+                  <td class="text-success">+$4,224 <br/><small>(+25.1%)</small></td><td>5.1%</td>
+                </tr>
+                <tr>
+                  <td class="fw-bold">SPY</td><td><span class="badge bg-secondary">ETF</span></td>
+                  <td>300.0000</td><td>$420.00</td><td>$554.80</td>
+                  <td class="text-success">+$4.10 (+0.74%)</td><td>$166,440</td>
+                  <td class="text-success">+$40,440 <br/><small>(+32.1%)</small></td><td>40.3%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════ ANALYTICS ══════ -->
+      <div id="page-analytics" class="page-section">
+        <h2 class="fw-bold mb-4">Analytics</h2>
+        <div class="row g-3 mb-4">
+          <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm text-center stat-card">
+              <div class="card-body py-3">
+                <p class="text-muted small mb-1">Total AUM</p>
+                <h4 class="fw-bold mb-0">$4,218,340</h4>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm text-center stat-card">
+              <div class="card-body py-3">
+                <p class="text-muted small mb-1">Total Gain / Loss</p>
+                <h4 class="fw-bold text-success mb-0">+$612,480</h4>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm text-center stat-card">
+              <div class="card-body py-3">
+                <p class="text-muted small mb-1">Overall Return</p>
+                <h4 class="fw-bold text-success mb-0">+17.0%</h4>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm text-center stat-card">
+              <div class="card-body py-3">
+                <p class="text-muted small mb-1">Active Clients</p>
+                <h4 class="fw-bold mb-0">7</h4>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+          <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+              <div class="card-header bg-white py-3"><h5 class="mb-0 fw-semibold">Asset Allocation</h5></div>
+              <div class="card-body">
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between mb-1"><span class="fw-semibold">Stock</span><span>$2,531,004 <span class="text-muted">(60.0%)</span></span></div>
+                  <div class="progress" style="height:10px;"><div class="progress-bar bg-primary" style="width:60%"></div></div>
+                </div>
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between mb-1"><span class="fw-semibold">ETF</span><span>$843,668 <span class="text-muted">(20.0%)</span></span></div>
+                  <div class="progress" style="height:10px;"><div class="progress-bar bg-info" style="width:20%"></div></div>
+                </div>
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between mb-1"><span class="fw-semibold">Bond</span><span>$506,201 <span class="text-muted">(12.0%)</span></span></div>
+                  <div class="progress" style="height:10px;"><div class="progress-bar bg-success" style="width:12%"></div></div>
+                </div>
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between mb-1"><span class="fw-semibold">Cryptocurrency</span><span>$253,100 <span class="text-muted">(6.0%)</span></span></div>
+                  <div class="progress" style="height:10px;"><div class="progress-bar bg-danger" style="width:6%"></div></div>
+                </div>
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between mb-1"><span class="fw-semibold">MutualFund</span><span>$84,367 <span class="text-muted">(2.0%)</span></span></div>
+                  <div class="progress" style="height:10px;"><div class="progress-bar bg-warning" style="width:2%"></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+              <div class="card-header bg-white py-3"><h5 class="mb-0 fw-semibold">Clients by Risk Profile</h5></div>
+              <div class="card-body">
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between mb-1"><span><span class="badge badge-conservative me-2">Conservative</span></span><span>2 clients <span class="text-muted">(25%)</span></span></div>
+                  <div class="progress" style="height:10px;"><div class="progress-bar bg-success" style="width:25%"></div></div>
+                </div>
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between mb-1"><span><span class="badge badge-moderate me-2">Moderate</span></span><span>3 clients <span class="text-muted">(37.5%)</span></span></div>
+                  <div class="progress" style="height:10px;"><div class="progress-bar bg-info" style="width:37.5%"></div></div>
+                </div>
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between mb-1"><span><span class="badge badge-aggressive me-2">Aggressive</span></span><span>2 clients <span class="text-muted">(25%)</span></span></div>
+                  <div class="progress" style="height:10px;"><div class="progress-bar bg-warning" style="width:25%"></div></div>
+                </div>
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between mb-1"><span><span class="badge badge-veryaggressive me-2">Very Aggressive</span></span><span>1 client <span class="text-muted">(12.5%)</span></span></div>
+                  <div class="progress" style="height:10px;"><div class="progress-bar bg-danger" style="width:12.5%"></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white py-3"><h5 class="mb-0 fw-semibold">Top Holdings by Value</h5></div>
+          <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+              <thead class="table-light">
+                <tr><th>Symbol</th><th>Asset Type</th><th>Total Qty</th><th>Market Value</th><th>Gain / Loss</th><th>Return</th></tr>
+              </thead>
+              <tbody>
+                <tr><td class="fw-bold">SPY</td><td><span class="badge bg-secondary">ETF</span></td><td>680.0000</td><td>$377,064</td><td class="text-success">+$91,664</td><td class="text-success">+32.1%</td></tr>
+                <tr><td class="fw-bold">QQQ</td><td><span class="badge bg-secondary">ETF</span></td><td>540.0000</td><td>$238,464</td><td class="text-success">+$33,264</td><td class="text-success">+16.2%</td></tr>
+                <tr><td class="fw-bold">NVDA</td><td><span class="badge bg-secondary">Stock</span></td><td>160.0000</td><td>$140,064</td><td class="text-success">+$40,864</td><td class="text-success">+41.2%</td></tr>
+                <tr><td class="fw-bold">MSFT</td><td><span class="badge bg-secondary">Stock</span></td><td>220.0000</td><td>$91,476</td><td class="text-success">+$21,076</td><td class="text-success">+29.9%</td></tr>
+                <tr><td class="fw-bold">BTC</td><td><span class="badge bg-secondary">Cryptocurrency</span></td><td>2.5000</td><td>$173,275</td><td class="text-success">+$48,275</td><td class="text-success">+38.6%</td></tr>
+                <tr><td class="fw-bold">AAPL</td><td><span class="badge bg-secondary">Stock</span></td><td>350.0000</td><td>$66,255</td><td class="text-success">+$14,385</td><td class="text-success">+27.7%</td></tr>
+                <tr><td class="fw-bold">GOOGL</td><td><span class="badge bg-secondary">Stock</span></td><td>280.0000</td><td>$49,056</td><td class="text-success">+$9,856</td><td class="text-success">+25.1%</td></tr>
+                <tr><td class="fw-bold">TLT</td><td><span class="badge bg-secondary">Bond</span></td><td>500.0000</td><td>$47,450</td><td class="text-danger">−$2,550</td><td class="text-danger">−5.1%</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════ SWAGGER ══════ -->
+      <div id="page-swagger" class="page-section">
+        <h2 class="fw-bold mb-1">Swagger / API Documentation</h2>
+        <p class="text-muted mb-4">Interactive REST API documentation — available at <code>/swagger</code> when the API is running.</p>
+        <div class="card border-0 shadow-sm mb-3" style="border-left:4px solid #6c757d !important;">
+          <div class="card-body py-2 px-3"><span class="badge bg-success me-2">POST</span><code>/api/auth/register</code> &nbsp;<span class="text-muted small">Register a new advisor account</span></div>
+        </div>
+        <div class="card border-0 shadow-sm mb-3" style="border-left:4px solid #6c757d !important;">
+          <div class="card-body py-2 px-3"><span class="badge bg-success me-2">POST</span><code>/api/auth/login</code> &nbsp;<span class="text-muted small">Authenticate and receive JWT token</span></div>
+        </div>
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-body py-2 px-3"><span class="badge bg-primary me-2">GET</span><code>/api/clients</code> &nbsp;<span class="text-muted small">List all clients for authenticated advisor</span> <span class="badge bg-warning text-dark ms-2 small">🔒 JWT</span></div>
+        </div>
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-body py-2 px-3"><span class="badge bg-success me-2">POST</span><code>/api/clients</code> &nbsp;<span class="text-muted small">Create new client</span> <span class="badge bg-warning text-dark ms-2 small">🔒 JWT</span></div>
+        </div>
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-body py-2 px-3"><span class="badge bg-primary me-2">GET</span><code>/api/portfolios/{id}</code> &nbsp;<span class="text-muted small">Get portfolio with full investment details</span> <span class="badge bg-warning text-dark ms-2 small">🔒 JWT</span></div>
+        </div>
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-body py-2 px-3"><span class="badge bg-success me-2">POST</span><code>/api/portfolios/{id}/refresh-prices</code> &nbsp;<span class="text-muted small">Fetch live market prices for all holdings</span> <span class="badge bg-warning text-dark ms-2 small">🔒 JWT</span></div>
+        </div>
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-body py-2 px-3"><span class="badge bg-success me-2">POST</span><code>/api/investments</code> &nbsp;<span class="text-muted small">Buy an investment (merges if symbol exists)</span> <span class="badge bg-warning text-dark ms-2 small">🔒 JWT</span></div>
+        </div>
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-body py-2 px-3"><span class="badge bg-success me-2">POST</span><code>/api/investments/{id}/sell</code> &nbsp;<span class="text-muted small">Sell shares — partial or full position</span> <span class="badge bg-warning text-dark ms-2 small">🔒 JWT</span></div>
+        </div>
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-body py-2 px-3"><span class="badge bg-primary me-2">GET</span><code>/api/market-data/quote/{symbol}</code> &nbsp;<span class="text-muted small">Real-time stock quote via Alpha Vantage</span> <span class="badge bg-warning text-dark ms-2 small">🔒 JWT</span></div>
+        </div>
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-body py-2 px-3"><span class="badge bg-primary me-2">GET</span><code>/api/market-data/summary</code> &nbsp;<span class="text-muted small">S&amp;P 500, NASDAQ, DOW summary</span> <span class="badge bg-warning text-dark ms-2 small">🔒 JWT</span></div>
+        </div>
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-body py-2 px-3"><span class="badge bg-primary me-2">GET</span><code>/health</code> &nbsp;<span class="text-muted small">Application health check endpoint</span></div>
+        </div>
+      </div>
+
+    </div><!-- content -->
+  </main>
+</div><!-- page -->
+</div><!-- appShell -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  function showApp() {
+    document.getElementById('loginPage').style.display = 'none';
+    document.getElementById('appShell').style.display  = 'block';
+  }
+
+  function showPage(name) {
+    document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.sidebar .nav-link').forEach(el => el.classList.remove('active'));
+    const page = document.getElementById('page-' + name);
+    const nav  = document.getElementById('nav-' + name);
+    if (page) page.classList.add('active');
+    if (nav)  nav.classList.add('active');
+  }
+</script>
+</body>
+</html>
