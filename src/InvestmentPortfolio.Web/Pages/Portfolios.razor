@@ -1,0 +1,96 @@
+@page "/portfolios"
+@attribute [Authorize]
+@inject IApiService ApiService
+@inject NavigationManager Navigation
+
+<PageTitle>Portfolios - Investment Portfolio</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>All Portfolios</h1>
+</div>
+
+@if (_isLoading)
+{
+    <div class="d-flex justify-content-center"><div class="spinner-border text-primary"></div></div>
+}
+else if (!_portfolios.Any())
+{
+    <div class="alert alert-info">
+        No portfolios found. <a href="/clients">Go to Clients</a> to create one.
+    </div>
+}
+else
+{
+    <div class="row g-4">
+        @foreach (var portfolio in _portfolios)
+        {
+            <div class="col-md-6 col-lg-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0 fw-bold">@portfolio.Name</h6>
+                        <span class="badge @(portfolio.Status == PortfolioStatus.Active ? "bg-success" : "bg-secondary")">
+                            @portfolio.Status
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small mb-3">
+                            <a href="/clients/@portfolio.ClientId">@portfolio.ClientName</a>
+                        </p>
+                        <div class="row text-center g-2">
+                            <div class="col-6">
+                                <p class="text-muted small mb-0">Market Value</p>
+                                <strong>$@portfolio.TotalValue.ToString("N0")</strong>
+                            </div>
+                            <div class="col-6">
+                                <p class="text-muted small mb-0">Gain / Loss</p>
+                                <strong class="@(portfolio.TotalGainLoss >= 0 ? "text-success" : "text-danger")">
+                                    @(portfolio.TotalGainLoss >= 0 ? "+" : "")$@portfolio.TotalGainLoss.ToString("N0")
+                                </strong>
+                            </div>
+                            <div class="col-6">
+                                <p class="text-muted small mb-0">Return</p>
+                                <strong class="@(portfolio.TotalGainLossPercent >= 0 ? "text-success" : "text-danger")">
+                                    @(portfolio.TotalGainLossPercent >= 0 ? "+" : "")@portfolio.TotalGainLossPercent.ToString("F2")%
+                                </strong>
+                            </div>
+                            <div class="col-6">
+                                <p class="text-muted small mb-0">Holdings</p>
+                                <strong>@portfolio.Investments.Count</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-white">
+                        <a href="/portfolios/@portfolio.Id" class="btn btn-outline-primary btn-sm w-100">
+                            View Holdings
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<PortfolioDto> _portfolios = new();
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load portfolios for all clients belonging to this advisor
+        var clientsResult = await ApiService.GetClientsAsync();
+        if (clientsResult.Success && clientsResult.Data is not null)
+        {
+            var portfolioTasks = clientsResult.Data
+                .Select(c => ApiService.GetPortfoliosByClientAsync(c.Id));
+
+            var results = await Task.WhenAll(portfolioTasks);
+
+            _portfolios = results
+                .Where(r => r.Success && r.Data is not null)
+                .SelectMany(r => r.Data!)
+                .OrderByDescending(p => p.TotalValue)
+                .ToList();
+        }
+        _isLoading = false;
+    }
+}

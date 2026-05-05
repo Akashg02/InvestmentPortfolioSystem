@@ -1,0 +1,256 @@
+@page "/analytics"
+@attribute [Authorize]
+@inject IApiService ApiService
+
+<PageTitle>Analytics - Investment Portfolio</PageTitle>
+
+<h1 class="mb-4">Analytics</h1>
+
+@if (_isLoading)
+{
+    <div class="d-flex justify-content-center"><div class="spinner-border text-primary"></div></div>
+}
+else
+{
+    <!-- Top Summary Row -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body">
+                    <p class="text-muted small mb-1">Total AUM</p>
+                    <h4 class="fw-bold">$@_totalAum.ToString("N0")</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body">
+                    <p class="text-muted small mb-1">Total Gain / Loss</p>
+                    <h4 class="fw-bold @(_totalGainLoss >= 0 ? "text-success" : "text-danger")">
+                        @(_totalGainLoss >= 0 ? "+" : "")$@_totalGainLoss.ToString("N0")
+                    </h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body">
+                    <p class="text-muted small mb-1">Overall Return</p>
+                    <h4 class="fw-bold @(_overallReturn >= 0 ? "text-success" : "text-danger")">
+                        @(_overallReturn >= 0 ? "+" : "")@_overallReturn.ToString("F2")%
+                    </h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body">
+                    <p class="text-muted small mb-1">Active Clients</p>
+                    <h4 class="fw-bold">@_activeClients</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Asset Allocation Breakdown -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white"><h5 class="mb-0">Asset Allocation</h5></div>
+                <div class="card-body">
+                    @foreach (var (assetType, value) in _allocationByType)
+                    {
+                        var pct = _totalAum > 0 ? (value / _totalAum) * 100 : 0;
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="fw-semibold">@assetType</span>
+                                <span>$@value.ToString("N0") &nbsp;<span class="text-muted">(@pct.ToString("F1")%)</span></span>
+                            </div>
+                            <div class="progress" style="height:8px;">
+                                <div class="progress-bar @GetProgressBarClass(assetType)"
+                                     style="width:@pct.ToString("F1")%"></div>
+                            </div>
+                        </div>
+                    }
+                    @if (!_allocationByType.Any())
+                    {
+                        <p class="text-muted">No investment data yet.</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Risk Profile Distribution -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white"><h5 class="mb-0">Clients by Risk Profile</h5></div>
+                <div class="card-body">
+                    @foreach (var (risk, count) in _clientsByRisk)
+                    {
+                        var pct = _activeClients > 0 ? ((double)count / _activeClients) * 100 : 0;
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>
+                                    <span class="badge @GetRiskBadgeClass(risk) me-2">@risk</span>
+                                </span>
+                                <span>@count client@(count != 1 ? "s" : "") &nbsp;<span class="text-muted">(@pct.ToString("F0")%)</span></span>
+                            </div>
+                            <div class="progress" style="height:8px;">
+                                <div class="progress-bar @GetRiskProgressClass(risk)"
+                                     style="width:@pct.ToString("F1")%"></div>
+                            </div>
+                        </div>
+                    }
+                    @if (!_clientsByRisk.Any())
+                    {
+                        <p class="text-muted">No client data yet.</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Holdings -->
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white"><h5 class="mb-0">Top Holdings by Value</h5></div>
+                <div class="card-body p-0">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Asset Type</th>
+                                <th>Total Quantity</th>
+                                <th>Market Value</th>
+                                <th>Gain / Loss</th>
+                                <th>Return</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var holding in _topHoldings)
+                            {
+                                <tr>
+                                    <td class="fw-bold">@holding.Symbol</td>
+                                    <td><span class="badge bg-secondary">@holding.AssetType</span></td>
+                                    <td>@holding.TotalQuantity.ToString("N4")</td>
+                                    <td>$@holding.TotalValue.ToString("N2")</td>
+                                    <td class="@(holding.TotalGainLoss >= 0 ? "text-success" : "text-danger")">
+                                        @(holding.TotalGainLoss >= 0 ? "+" : "")$@holding.TotalGainLoss.ToString("N2")
+                                    </td>
+                                    <td class="@(holding.ReturnPct >= 0 ? "text-success" : "text-danger")">
+                                        @(holding.ReturnPct >= 0 ? "+" : "")@holding.ReturnPct.ToString("F2")%
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    @if (!_topHoldings.Any())
+                    {
+                        <p class="text-muted p-3">No holdings data yet.</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _isLoading = true;
+    private decimal _totalAum;
+    private decimal _totalGainLoss;
+    private decimal _overallReturn;
+    private int _activeClients;
+
+    private Dictionary<string, decimal> _allocationByType = new();
+    private Dictionary<RiskLevel, int> _clientsByRisk = new();
+
+    private record HoldingSummary(string Symbol, AssetType AssetType, decimal TotalQuantity,
+        decimal TotalValue, decimal TotalGainLoss, decimal ReturnPct);
+    private List<HoldingSummary> _topHoldings = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var clientsResult = await ApiService.GetClientsAsync();
+        if (!clientsResult.Success || clientsResult.Data is null)
+        {
+            _isLoading = false;
+            return;
+        }
+
+        var clients = clientsResult.Data.ToList();
+        _activeClients = clients.Count(c => c.IsActive);
+
+        // Risk distribution
+        _clientsByRisk = clients
+            .GroupBy(c => c.RiskProfile)
+            .OrderBy(g => g.Key)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        // Load all portfolios
+        var portfolioTasks = clients.Select(c => ApiService.GetPortfoliosByClientAsync(c.Id));
+        var portfolioResults = await Task.WhenAll(portfolioTasks);
+        var allPortfolios = portfolioResults
+            .Where(r => r.Success && r.Data is not null)
+            .SelectMany(r => r.Data!)
+            .ToList();
+
+        _totalAum = clients.Sum(c => c.TotalPortfolioValue);
+        _totalGainLoss = clients.Sum(c => c.TotalGainLoss);
+        var totalCost = _totalAum - _totalGainLoss;
+        _overallReturn = totalCost > 0 ? (_totalGainLoss / totalCost) * 100 : 0;
+
+        // Asset allocation
+        var allInvestments = allPortfolios.SelectMany(p => p.Investments).ToList();
+
+        _allocationByType = allInvestments
+            .GroupBy(i => i.AssetType.ToString())
+            .OrderByDescending(g => g.Sum(i => i.CurrentValue))
+            .ToDictionary(g => g.Key, g => g.Sum(i => i.CurrentValue));
+
+        // Top holdings
+        _topHoldings = allInvestments
+            .GroupBy(i => i.Symbol)
+            .Select(g => new HoldingSummary(
+                Symbol: g.Key,
+                AssetType: g.First().AssetType,
+                TotalQuantity: g.Sum(i => i.Quantity),
+                TotalValue: g.Sum(i => i.CurrentValue),
+                TotalGainLoss: g.Sum(i => i.GainLoss),
+                ReturnPct: g.Sum(i => i.TotalCost) > 0
+                    ? (g.Sum(i => i.GainLoss) / g.Sum(i => i.TotalCost)) * 100
+                    : 0))
+            .OrderByDescending(h => h.TotalValue)
+            .Take(15)
+            .ToList();
+
+        _isLoading = false;
+    }
+
+    private static string GetProgressBarClass(string assetType) => assetType switch
+    {
+        "Stock"          => "bg-primary",
+        "ETF"            => "bg-info",
+        "Bond"           => "bg-success",
+        "MutualFund"     => "bg-warning",
+        "Cryptocurrency" => "bg-danger",
+        "RealEstate"     => "bg-secondary",
+        _                => "bg-dark"
+    };
+
+    private static string GetRiskBadgeClass(RiskLevel risk) => risk switch
+    {
+        RiskLevel.Conservative   => "bg-success",
+        RiskLevel.Moderate       => "bg-info",
+        RiskLevel.Aggressive     => "bg-warning text-dark",
+        RiskLevel.VeryAggressive => "bg-danger",
+        _                        => "bg-secondary"
+    };
+
+    private static string GetRiskProgressClass(RiskLevel risk) => risk switch
+    {
+        RiskLevel.Conservative   => "bg-success",
+        RiskLevel.Moderate       => "bg-info",
+        RiskLevel.Aggressive     => "bg-warning",
+        RiskLevel.VeryAggressive => "bg-danger",
+        _                        => "bg-secondary"
+    };
+}

@@ -128,8 +128,9 @@ public class AlphaVantageMarketDataService : IMarketDataService
 
     private static bool IsMarketOpen()
     {
+        var tzId = OperatingSystem.IsWindows() ? "Eastern Standard Time" : "America/New_York";
         var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
-            TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time"));
+            TimeZoneInfo.FindSystemTimeZoneById(tzId));
         return now.DayOfWeek is not DayOfWeek.Saturday and not DayOfWeek.Sunday
                && now.TimeOfDay >= TimeSpan.FromHours(9.5)
                && now.TimeOfDay <= TimeSpan.FromHours(16);
